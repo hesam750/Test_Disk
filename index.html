@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست شخصیت شناسی DISC</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            text-align: center;
+            background: #f0f0f0;
+            color: black;
+            padding: 20px;
+            overflow: hidden;
+            position: relative;
+            transition: background 0.5s, color 0.5s;
+        }
+        .dark-mode {
+            background: #1a1a1a;
+            color: white;
+        }
+        .toggle-mode {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .toggle-mode img {
+            width: 40px;
+            height: 40px;
+            transition: opacity 0.3s;
+        }
+        .dark-mode .toggle-mode img {
+            opacity: 0.7;
+        }
+        .toggle-mode:hover {
+            transform: scale(1.1);
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #ffffff;
+            color: black;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, background 0.5s, color 0.5s;
+            position: relative;
+            z-index: 10;
+            overflow-y: auto; /* اضافه شده */
+            max-height: 90vh; /* اضافه شده */
+        }
+        .dark-mode .container {
+            background: #333;
+            color: white;
+        }
+        .container:hover {
+            transform: scale(1.02);
+        }
+        .question {
+            font-size: 20px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .option {
+            cursor: pointer;
+            padding: 10px 20px;
+            width: 80%;
+            background: #667eea;
+            color: white;
+            border-radius: 5px;
+            transition: background 0.3s, transform 0.2s;
+            border: none;
+            text-align: center;
+            font-size: 16px;
+        }
+        .option:hover, .option.selected {
+            background: #5a67d8;
+            transform: scale(1.05);
+        }
+        button {
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            margin-top: 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #e63946;
+        }
+        button:disabled {
+            background-color: #ccc;
+        }
+        #result-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff;
+            color: black;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        .rain {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .drop {
+            position: absolute;
+            color: rgba(0, 0, 0, 0.2);
+            font-size: 24px;
+            font-weight: bold;
+            animation: fall linear infinite;
+        }
+        .dark-mode .drop {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        @keyframes fall {
+            from {
+                transform: translateY(-100%);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+        #chart-container {
+            display: none;
+            margin-top: 20px;
+            height: 400px; /* ارتفاع ثابت برای نمودار */
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-mode" onclick="toggleMode()">
+        <img id="theme-icon" src="https://cdn-icons-png.flaticon.com/512/1829/1829191.png" alt="Light Mode">
+    </button>
+    <div class="rain" id="rain"></div>
+    <div class="container">
+        <h2>🎯 تست شخصیت شناسی DISC 🎯</h2>
+        <div id="question-container">
+            <p class="question" id="question-text">در حال بارگذاری سوال...</p>
+            <div class="options" id="options-container">
+                <button class="option" value="1" onclick="selectAnswer(this, 1)">✖ کاملاً مخالف</button>
+                <button class="option" value="2" onclick="selectAnswer(this, 2)">⚪ مخالف</button>
+                <button class="option" value="3" onclick="selectAnswer(this, 3)">➖ نه مخالف، نه موافق</button>
+                <button class="option" value="4" onclick="selectAnswer(this, 4)">🔵 موافق</button>
+                <button class="option" value="5" onclick="selectAnswer(this, 5)">✔ کاملاً موافق</button>
+            </div>
+            <button id="next-btn" onclick="nextQuestion()" disabled>بعدی</button>
+        </div>
+        <div id="result-container" style="display: none;">
+            <h3>📊 نتیجه تست شخصیت شما</h3>
+            <p id="result-text"></p>
+        </div>
+        <canvas id="chart-container" width="400" height="400"></canvas>
+    </div>
+    <audio id="click-sound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const questions = [
+            "من معمولاً در شرایط رقابتی بهترین عملکرد را دارم.",
+            "اگر مشکلی پیش بیاید، ترجیح می‌دهم سریع تصمیم بگیرم.",
+            "دوست دارم در موقعیت‌های جدید و چالش‌برانگیز قرار بگیرم.",
+            "به ندرت از گرفتن تصمیم‌های سخت می‌ترسم.",
+            "من معمولاً نقش رهبر را در گروه بر عهده می‌گیرم.",
+            "اهدافم را با جدیت دنبال می‌کنم، حتی اگر سخت باشند.",
+            "از اینکه دیگران از من پیروی کنند، لذت می‌برم.",
+            "به ندرت تحت تأثیر احساسات قرار می‌گیرم و منطقی فکر می‌کنم.",
+            "وقتی کسی مرا به چالش می‌کشد، انگیزه بیشتری پیدا می‌کنم.",
+            "معمولاً نیازی به تأیید دیگران ندارم.",
+            "ارتباط گرفتن با افراد جدید برایم راحت است.",
+            "دوست دارم دیگران را تشویق کنم و روحیه‌شان را بالا ببرم.",
+            "معمولاً مرکز توجه بودن در جمع را دوست دارم.",
+            "به راحتی با دیگران ارتباط برقرار می‌کنم و گفت‌وگوهای طولانی دارم.",
+            "معمولاً افراد را سریع متقاعد می‌کنم که ایده‌هایم ارزشمند هستند.",
+            "من از کار کردن در محیط‌های پرانرژی و فعال لذت می‌برم.",
+            "برایم مهم است که دیگران مرا دوست داشته باشند.",
+            "در جلسات و رویدادهای اجتماعی حضور فعال دارم.",
+            "در مواقع سختی، به جای منطق، بیشتر بر احساسات تکیه می‌کنم.",
+            "معمولاً خوش‌بین و مثبت‌اندیش هستم.",
+            "ترجیح می‌دهم در یک محیط کاری پایدار و بدون تغییرات ناگهانی باشم.",
+            "من معمولاً در کار تیمی بهتر از کار فردی عمل می‌کنم.",
+            "برایم مهم است که همه در گروه احساس راحتی داشته باشند.",
+            "از ایجاد تعارض در محیط کار یا خانه پرهیز می‌کنم.",
+            "به جای رقابت، همکاری را ترجیح می‌دهم.",
+            "به احساسات و نیازهای دیگران بسیار حساس هستم.",
+            "معمولاً قبل از هر تصمیم‌گیری، نظر دیگران را می‌پرسم.",
+            "دوست دارم کارها را با صبر و حوصله انجام دهم.",
+            "به راحتی به دیگران اعتماد می‌کنم و وفادار هستم.",
+            "از تغییرات ناگهانی خوشم نمی‌آید و به روال‌های مشخص پایبندم.",
+            "دوست دارم قبل از تصمیم‌گیری، همه جزئیات را بررسی کنم.",
+            "معمولاً به قوانین و استانداردها پایبند هستم.",
+            "دقت در کار برایم بسیار مهم است.",
+            "قبل از شروع یک کار، همه چیز را برنامه‌ریزی می‌کنم.",
+            "علاقه دارم که داده‌ها و اطلاعات را تجزیه‌وتحلیل کنم.",
+            "در مواجهه با مشکلات، معمولاً راه‌حل‌های منطقی پیدا می‌کنم.",
+            "من معمولاً روی کیفیت کارم حساسیت زیادی دارم.",
+            "به ندرت ریسک می‌کنم مگر اینکه از نتیجه آن اطمینان داشته باشم.",
+            "به قوانین و چارچوب‌های مشخص علاقه دارم.",
+            "معمولاً ترجیح می‌دهم به تنهایی کار کنم تا بتوانم روی جزئیات تمرکز کنم."
+        ];
+
+        let scores = { D: 0, I: 0, S: 0, C: 0 };
+        let currentQuestionIndex = 0;
+        const questionText = document.getElementById("question-text");
+        const nextButton = document.getElementById("next-btn");
+        const resultContainer = document.getElementById("result-container");
+        const resultText = document.getElementById("result-text");
+
+        function toggleMode() {
+            document.body.classList.toggle("dark-mode");
+            const themeIcon = document.getElementById("theme-icon");
+            if (document.body.classList.contains("dark-mode")) {
+                themeIcon.src = "https://cdn-icons-png.flaticon.com/512/2285/2285571.png"; // لامپ خاموش
+            } else {
+                themeIcon.src = "https://cdn-icons-png.flaticon.com/512/1829/1829191.png"; // لامپ روشن
+            }
+        }
+
+        function createRain() {
+            const rainContainer = document.getElementById("rain");
+            const letters = ['D', 'I', 'S', 'C'];
+            for (let i = 0; i < 80; i++) {
+                let drop = document.createElement("div");
+                drop.classList.add("drop");
+                drop.innerText = letters[Math.floor(Math.random() * letters.length)];
+                drop.style.left = Math.random() * 100 + "vw";
+                drop.style.animationDuration = (Math.random() * 3 + 3) + "s";
+                drop.style.animationDelay = Math.random() * 2 + "s";
+                rainContainer.appendChild(drop);
+            }
+        }
+
+        function playClickSound() {
+            document.getElementById("click-sound").play();
+        }
+
+        function loadQuestion() {
+            questionText.textContent = questions[currentQuestionIndex];
+            nextButton.disabled = true;
+        }
+
+        function selectAnswer(button, value) {
+            document.querySelectorAll(".option").forEach(btn => btn.classList.remove("selected"));
+            button.classList.add("selected");
+            const category = currentQuestionIndex % 4 === 0 ? "D" : currentQuestionIndex % 4 === 1 ? "I" : currentQuestionIndex % 4 === 2 ? "S" : "C";
+            scores[category] += value;
+            nextButton.disabled = false;
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+                document.querySelectorAll(".option").forEach(btn => btn.classList.remove("selected"));
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            let totalScore = scores.D + scores.I + scores.S + scores.C;
+            let resultD = Math.round((scores.D / totalScore) * 100);
+            let resultI = Math.round((scores.I / totalScore) * 100);
+            let resultS = Math.round((scores.S / totalScore) * 100);
+            let resultC = Math.round((scores.C / totalScore) * 100);
+
+            resultText.innerHTML = `
+                <p>🔥 تسلط (D): ${resultD}%</p>
+                <p>🎭 تأثیرگذاری (I): ${resultI}%</p>
+                <p>🌱 ثبات (S): ${resultS}%</p>
+                <p>🎯 وظیفه‌شناسی (C): ${resultC}%</p>
+            `;
+            document.getElementById("question-container").style.display = "none";
+            resultContainer.style.display = "block";
+
+            let ctx = document.getElementById("chart-container").getContext("2d");
+            new Chart(ctx, {
+                type: "pie",
+                data: {
+                    labels: ["تسلط (D)", "تأثیرگذاری (I)", "ثبات (S)", "وظیفه‌شناسی (C)"],
+                    datasets: [{
+                        data: [resultD, resultI, resultS, resultC],
+                        backgroundColor: ["#ff0000", "#ffcc00", "#00cc66", "#0066ff"]
+                    }]
+                }
+            });
+            document.getElementById("chart-container").style.display = "block";
+
+            // اسکرول خودکار به پایین
+            document.querySelector('.container').scrollTo({
+                top: document.querySelector('.container').scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        createRain();
+        loadQuestion();
+    </script>
+</body>
+</html>
